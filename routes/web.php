@@ -95,6 +95,7 @@ Route::get('/api/patients/{patient}', [PatientController::class, 'show'])->middl
 // Health Card
 Route::middleware('auth')->prefix('health-card')->name('health-card.')->group(function () {
     Route::get('/',                  [HealthCardController::class, 'index'])->name('index');
+    Route::get('print',             [HealthCardController::class, 'print'])->name('print');
     Route::get('find/by-card-no',   [HealthCardController::class, 'findByCard'])->name('find');
     Route::get('check-followup',    [HealthCardController::class, 'checkFollowUp'])->name('check-followup');
     Route::post('checkin',          [HealthCardController::class, 'checkin'])->name('checkin');

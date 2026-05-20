@@ -17,14 +17,115 @@ use Illuminate\Support\Facades\Log;
 
 class HealthCardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('backend.health-card.index');
+        $search = trim((string) $request->input('q', ''));
+        $status = $request->input('status');
+        $from   = $request->input('from');
+        $to     = $request->input('to');
+
+        $query = Patient::query();
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('patient_name', 'like', "%{$search}%")
+                  ->orWhere('mrn', 'like', "%{$search}%")
+                  ->orWhere('health_card_no', 'like', "%{$search}%")
+                  ->orWhere('mobileno', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status === 'active') {
+            $query->where('is_active', true)->where('is_dead', false);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        } elseif ($status === 'deceased') {
+            $query->where('is_dead', true);
+        }
+
+        if ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+
+        $patients = $query->latest()->paginate(15)->withQueryString();
+
+        $stats = [
+            'total'        => Patient::count(),
+            'active'       => Patient::where('is_active', true)->where('is_dead', false)->count(),
+            'inactive'     => Patient::where(function ($q) {
+                $q->where('is_active', false)->orWhere('is_dead', true);
+            })->count(),
+            'issued_today' => Patient::whereDate('created_at', today())->count(),
+        ];
+
+        $allPatients = Patient::orderBy('patient_name')->get(['id', 'patient_name', 'mrn', 'health_card_no']);
+
+        return view('backend.health-card.index', compact('patients', 'stats', 'allPatients', 'search', 'status', 'from', 'to'));
     }
 
     public function show(Patient $patient)
     {
         return view('patients.health-card', compact('patient'));
+    }
+
+    public function print(Request $request)
+    {
+        $search = trim((string) $request->input('q', ''));
+        $status = $request->input('status');
+        $from   = $request->input('from');
+        $to     = $request->input('to');
+
+        $query = Patient::query();
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('patient_name', 'like', "%{$search}%")
+                  ->orWhere('mrn', 'like', "%{$search}%")
+                  ->orWhere('health_card_no', 'like', "%{$search}%")
+                  ->orWhere('mobileno', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status === 'active') {
+            $query->where('is_active', true)->where('is_dead', false);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        } elseif ($status === 'deceased') {
+            $query->where('is_dead', true);
+        }
+
+        if ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+
+        $patients   = $query->latest()->get();
+        $generated  = now();
+
+        $html = view('backend.health-card.print', compact('patients', 'search', 'status', 'from', 'to', 'generated'))->render();
+
+        $mpdf = new \Mpdf\Mpdf([
+            'mode'           => 'utf-8',
+            'format'         => 'A4-L',
+            'margin_left'    => 8,
+            'margin_right'   => 8,
+            'margin_top'     => 12,
+            'margin_bottom'  => 12,
+            'margin_header'  => 5,
+            'margin_footer'  => 5,
+            'tempDir'        => storage_path('app/temp'),
+        ]);
+
+        $mpdf->SetTitle('Health Card Management — ' . $generated->format('d M Y'));
+        $mpdf->SetHTMLFooter('<div style="text-align:center;font-size:9px;color:#64748B;">Page {PAGENO} of {nbpg} &middot; Generated ' . $generated->format('d M Y h:i A') . '</div>');
+        $mpdf->WriteHTML($html);
+
+        return $mpdf->Output('health-cards-' . $generated->format('Y-m-d') . '.pdf', \Mpdf\Output\Destination::INLINE);
     }
 
     public function checkin(Request $request)
