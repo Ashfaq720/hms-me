@@ -38,7 +38,7 @@ class HealthCardController extends Controller
         if ($status === 'active') {
             $query->where('is_active', true)->where('is_dead', false);
         } elseif ($status === 'inactive') {
-            $query->where('is_active', false);
+            $query->where('is_active', false)->where('is_dead', false);
         } elseif ($status === 'deceased') {
             $query->where('is_dead', true);
         }
@@ -92,7 +92,7 @@ class HealthCardController extends Controller
         if ($status === 'active') {
             $query->where('is_active', true)->where('is_dead', false);
         } elseif ($status === 'inactive') {
-            $query->where('is_active', false);
+            $query->where('is_active', false)->where('is_dead', false);
         } elseif ($status === 'deceased') {
             $query->where('is_dead', true);
         }
@@ -380,6 +380,22 @@ class HealthCardController extends Controller
             'last_visit_date'  => \Carbon\Carbon::parse($lastVisit->date)->format('d M Y'),
             'days_since_last'  => $daysSince,
             'follow_up_window' => $followUpWindow,
+        ]);
+    }
+
+    public function toggleActive(Request $request, Patient $patient)
+    {
+        $request->validate(['is_active' => 'required|boolean']);
+
+        $patient->update([
+            'is_active'   => (bool) $request->boolean('is_active'),
+            'card_status' => $request->boolean('is_active') ? 'active' : 'inactive',
+            'updated_by'  => auth()->id(),
+        ]);
+
+        return response()->json([
+            'id'        => $patient->id,
+            'is_active' => $patient->is_active,
         ]);
     }
 

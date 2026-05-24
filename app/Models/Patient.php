@@ -9,6 +9,11 @@ class Patient extends Model
         'lang_id',
         'mrn',
         'health_card_no',
+        'card_status',
+        'card_type',
+        'card_issued_at',
+        'card_expires_at',
+        'card_notes',
         'patient_name',
         'dob',
         'image',
@@ -39,6 +44,8 @@ class Patient extends Model
     protected $casts = [
         'dob'                => 'date',
         'insurance_validity' => 'date',
+        'card_issued_at'     => 'date',
+        'card_expires_at'    => 'date',
         'is_ipd'             => 'boolean',
         'is_dead'            => 'boolean',
         'is_active'          => 'boolean',
@@ -94,18 +101,10 @@ class Patient extends Model
         parent::boot();
 
         static::created(function (Patient $patient) {
-            $dirty = [];
-
             if (empty($patient->mrn)) {
-                $dirty['mrn'] = 'MRN-' . str_pad((string) $patient->id, 6, '0', STR_PAD_LEFT);
-            }
-
-            if (empty($patient->health_card_no)) {
-                $dirty['health_card_no'] = 'HC-' . date('Y') . '-' . str_pad((string) $patient->id, 5, '0', STR_PAD_LEFT);
-            }
-
-            if ($dirty) {
-                $patient->forceFill($dirty)->saveQuietly();
+                $patient->forceFill([
+                    'mrn' => 'MRN-' . str_pad((string) $patient->id, 6, '0', STR_PAD_LEFT),
+                ])->saveQuietly();
             }
         });
     }

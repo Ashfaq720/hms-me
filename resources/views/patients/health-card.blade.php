@@ -8,6 +8,16 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* Preserve gradients / background colors when printing.
+           Without this, Chrome/Edge strip backgrounds and the card prints white. */
+        html, body, .hc-front, .hc-front::before, .hc-front::after,
+        .hc-back, .hc-back-stripe, .hc-chip, .hc-photo, .hc-qr,
+        .hc-allergy, .badge-allergy {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             background: #f0f4f8;
@@ -274,9 +284,54 @@
         }
 
         @media print {
-            body { background: #fff; padding: 0; justify-content: flex-start; padding: 10mm; }
-            .print-btn { display: none; }
-            .card-wrap { break-inside: avoid; }
+            @page { margin: 10mm; }
+
+            html, body {
+                background: #fff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            body {
+                padding: 0;
+                justify-content: flex-start;
+                display: block;
+                min-height: 0;
+            }
+
+            .print-btn { display: none !important; }
+
+            .card-wrap {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                margin: 0 auto;
+            }
+
+            /* Re-assert the front-card gradient + shadow for print.
+               Some print engines drop background-image — keep a solid
+               fallback color so the card never renders white. */
+            .hc-front {
+                background-color: #1e2a6e !important;
+                background-image: linear-gradient(135deg, #1e2a6e 0%, #2b3f9e 50%, #1a6fa8 100%) !important;
+                color: #fff !important;
+                box-shadow: 0 8px 32px rgba(30,42,110,0.28) !important;
+            }
+
+            .hc-back { background-color: #f8fafc !important; }
+            .hc-back-stripe { background-color: #2b335d !important; }
+            .hc-chip {
+                background-color: #ffc107 !important;
+                background-image: linear-gradient(135deg, #ffd700, #ffb300) !important;
+            }
+            .hc-qr { background-color: #fff !important; }
+            .hc-allergy {
+                background-color: rgba(255,80,80,0.18) !important;
+                border-color: rgba(255,120,120,0.4) !important;
+            }
+            .badge-allergy {
+                background-color: #fee2e2 !important;
+                color: #dc2626 !important;
+            }
         }
     </style>
 </head>
@@ -410,6 +465,13 @@
         colorLight:     '#ffffff',
         correctLevel:   QRCode.CorrectLevel.M
     });
+
+    @if (request('auto'))
+        // Auto-print when opened via Print button
+        window.addEventListener('load', function () {
+            setTimeout(function () { window.print(); }, 250);
+        });
+    @endif
 </script>
 </body>
 </html>

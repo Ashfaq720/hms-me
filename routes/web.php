@@ -99,6 +99,7 @@ Route::middleware('auth')->prefix('health-card')->name('health-card.')->group(fu
     Route::get('find/by-card-no',   [HealthCardController::class, 'findByCard'])->name('find');
     Route::get('check-followup',    [HealthCardController::class, 'checkFollowUp'])->name('check-followup');
     Route::post('checkin',          [HealthCardController::class, 'checkin'])->name('checkin');
+    Route::patch('{patient}/toggle-active', [HealthCardController::class, 'toggleActive'])->name('toggle-active');
     Route::get('{patient}',         [HealthCardController::class, 'show'])->name('show');
 });
 Route::resource('/doctors', DoctorController::class)->middleware('auth');
