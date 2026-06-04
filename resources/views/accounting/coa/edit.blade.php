@@ -1,1 +1,0 @@
-@extends('accounting.coa.create')

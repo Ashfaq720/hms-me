@@ -1,1 +1,0 @@
-@extends('inventory.items.create')
