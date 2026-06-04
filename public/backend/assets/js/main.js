@@ -210,45 +210,74 @@ function initPopover() {
 
 function initSidebarMenu() {
 
-	// Only collapse menus that are NOT marked as route-active so route-driven expansion remains
-	jQuery('.app-navbar .menubar > li.menu-arrow > a').next('.menu-inner')
-		.not(function() { return jQuery(this).closest('.menu-item').hasClass('route-active'); })
-		.slideUp();
-	jQuery('.app-navbar .menu-inner > li > a').next('.menu-inner')
-		.not(function() { return jQuery(this).closest('.menu-item').hasClass('route-active'); })
-		.slideUp();
+	// 1. Auto-expand all route-active branches FIRST so their .menu-inner is visible
+	//    and their parent <a> has .open. This previously lived inside initCheckable()
+	//    where it shouldn't — moved here so the sidebar is self-contained.
+	jQuery('.app-navbar .menubar .menu-item.route-active').each(function () {
+		var $li = jQuery(this);
+		$li.children('a').addClass('open');
+		$li.children('.menu-inner').show();
+		// Walk up — every ancestor menu-item must also be expanded
+		$li.parents('.menu-item').each(function () {
+			jQuery(this).children('a').addClass('open');
+			jQuery(this).children('.menu-inner').show();
+		});
+	});
 
-	jQuery('.app-navbar .menubar > li.menu-arrow > a, .app-navbar .menu-inner > li > a').unbind().on('click', function(e){
-		if(jQuery(this).hasClass('open')){
-			jQuery(this).removeClass('open');
-			jQuery(this).parent('li').children('.menu-inner').slideUp();
-		}else{
-			if (!window.event.ctrlKey) {
-				jQuery(this).addClass('open');
-			}
-			if(jQuery(this).parent('li').children('.menu-inner').length > 0){
-				var href = jQuery(this).attr('href');
-				if(!href || href === 'javascript:void(0);' || href === '#'){
-					e.preventDefault();
-				}
-				jQuery(this).next('.menu-inner').slideDown();
-				jQuery(this).parent('li').siblings('li').find('a:first').removeClass('open');
-				jQuery(this).parent('li').siblings('li').children('.menu-inner').slideUp();
-			}else{
-				jQuery(this).next('.menu-inner').slideUp();
-			}
+	// 2. Collapse anything that is NOT route-active and NOT marked .open
+	jQuery('.app-navbar .menu-inner').each(function () {
+		var $ul = jQuery(this);
+		var $parentLi = $ul.parent('li');
+		if (!$parentLi.hasClass('route-active') && !$parentLi.children('a').hasClass('open')) {
+			$ul.hide();
 		}
 	});
 
-	for (var nk = window.location,
-		o = $(".app-navbar .menubar a").filter(function(){
-		return this.href == nk;
-	}).addClass("active").parent().addClass("active").parent().show().siblings('a').addClass("active open").parent().parent().show().siblings('a').addClass("open");;){
-		if (!o.is("li")) {
-			break;
-		}
-		o = o.parent().slideDown().parent('li').children('a').addClass("active");
-	}
+	// 3. Click handler — state-based (uses visible() not .open class so it can't drift)
+	jQuery('.app-navbar .menubar > li.menu-arrow > a, .app-navbar .menu-inner > li > a')
+		.off('click.sidebar-menu')
+		.on('click.sidebar-menu', function (e) {
+			var $a = jQuery(this);
+			var $submenu = $a.next('.menu-inner');
+			var hasSubmenu = $submenu.length > 0;
+
+			// Leaf link with a real href — let the browser navigate normally
+			var href = $a.attr('href');
+			var isRealHref = href && href !== 'javascript:void(0);' && href !== '#';
+
+			if (!hasSubmenu) {
+				// Leaf — no toggle needed. Let click flow through.
+				return;
+			}
+
+			// Branch link — toggle the submenu and prevent navigation
+			e.preventDefault();
+			var isOpen = $submenu.is(':visible');
+
+			if (isOpen) {
+				$submenu.slideUp(200);
+				$a.removeClass('open');
+			} else {
+				// Close ALL siblings (at the same depth) before opening this branch
+				$a.parent('li').siblings('li')
+					.find('> a.open').removeClass('open').end()
+					.find('> .menu-inner:visible').slideUp(200);
+
+				$submenu.slideDown(200);
+				$a.addClass('open');
+			}
+		});
+
+	// 4. Mark the leaf link matching the current URL as active (visual highlight)
+	var currentHref = window.location.pathname.replace(/\/$/, '');
+	jQuery('.app-navbar .menubar a[href]').each(function () {
+		try {
+			var url = new URL(this.href, window.location.origin);
+			if (url.pathname.replace(/\/$/, '') === currentHref) {
+				jQuery(this).addClass('active');
+			}
+		} catch (_) { /* ignore malformed hrefs */ }
+	});
 }
 function initCheckable() {
     document.querySelectorAll('.checkable-wrapper').forEach(function(wrapper) {
@@ -294,12 +323,7 @@ function initCheckable() {
         });
     });
 
-	// Make sure route-active parents are shown and their anchors marked 'open' (so JS doesn't toggle them closed)
-	jQuery('.app-navbar .menubar .menu-item.route-active').each(function(){
-		var $li = jQuery(this);
-		$li.children('a').addClass('open');
-		$li.children('.menu-inner').show();
-	});
+	// (Route-active sidebar expansion moved to initSidebarMenu — was wrongly here)
 }
 
 function initEmailSidebarToggle() {
