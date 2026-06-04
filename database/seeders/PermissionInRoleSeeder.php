@@ -3,39 +3,31 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
+/**
+ * Grants the Super Admin and Admin roles EVERY permission in the system
+ * so they see every menu and can manage every module. Runs LAST in the
+ * DatabaseSeeder chain so newly-created permissions (NICU, OT, packages,
+ * ER, etc.) are also picked up automatically.
+ */
 class PermissionInRoleSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Assign permissions to Admin role (note: roles use lowercase names in RoleSeeder)
-        $admin = Role::whereName('Admin')->first();
-        if ($admin) {
-            $admin->givePermissionTo([
-                // Core modules
-                'user_access',
-                'role_access',
-                'permission_access',
-                'setting_access',
-                
-                // Inventory / ecommerce / etc.
-                'product_access',
-                'category_access',
-                'brand_access',
-                'supplier_access',
-                'supplier_show',
-                'purchase_access',
-                'purchase_show',
-                'purchase_order_access',
-                'purchase_order_show',
-                'view_profile',
-                'update_profile',
-            ]);
+        $all = Permission::all();
+
+        foreach (['Super Admin', 'Admin'] as $roleName) {
+            $role = Role::whereName($roleName)->first();
+            if ($role) {
+                $role->syncPermissions($all);
+                $this->command->info("→ {$roleName} role granted all {$all->count()} permissions.");
+            }
         }
+
+        // Spatie caches permissions; clear so the change is live immediately.
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         $this->command->info('Role permissions assigned successfully!');
     }
