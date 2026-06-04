@@ -22,9 +22,41 @@ use Illuminate\Support\Facades\Log;
 
 class HealthCardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('backend.health-card.index');
+        $query = Patient::query();
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('health_card_no', 'like', "%{$search}%")
+                  ->orWhere('patient_name', 'like', "%{$search}%")
+                  ->orWhere('mobileno', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->input('status') === 'active' ? 1 : 0);
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('created_at', '>=', $request->input('from_date'));
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('created_at', '<=', $request->input('to_date'));
+        }
+
+        $patients = $query->orderByDesc('id')->get();
+
+        $stats = [
+            'total'    => Patient::count(),
+            'active'   => Patient::where('is_active', 1)->whereNotNull('health_card_no')->count(),
+            'inactive' => Patient::where('is_active', 0)->count(),
+            'today'    => Patient::whereDate('created_at', today())->whereNotNull('health_card_no')->count(),
+        ];
+
+        return view('backend.health-card.index', compact('patients', 'stats'));
     }
 
     public function show(Patient $patient)
