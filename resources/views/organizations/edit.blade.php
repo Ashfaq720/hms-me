@@ -1,1 +1,0 @@
-@extends('organizations.create')

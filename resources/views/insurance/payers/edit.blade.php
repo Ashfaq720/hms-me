@@ -1,1 +1,0 @@
-@extends('insurance.payers.create')
