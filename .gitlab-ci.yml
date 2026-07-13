@@ -1,0 +1,15 @@
+stages:
+  - deploy
+
+deploy_production:
+  stage: deploy
+  tags:
+    - cbps
+  only:
+    - main
+  script:
+    - echo "==> Deploying commit $CI_COMMIT_SHORT_SHA"
+    - ssh -o StrictHostKeyChecking=no deploy@172.30.40.93 "cd /opt/hms && git pull && bash deploy.sh"
+  environment:
+    name: development
+    url: http://172.30.40.93:8080
